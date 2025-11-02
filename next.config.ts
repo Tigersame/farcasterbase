@@ -1,20 +1,26 @@
 import type { NextConfig } from "next";
 import webpack from "webpack";
+import path from "path";
 
 const nextConfig: NextConfig = {
   webpack: (config, { isServer }) => {
     config.externals.push("pino-pretty", "lokijs", "encoding");
     
-    // Ignore wagmi sync actions that require viem functions not available in this version
-    // These are not used in mini apps, so safe to ignore during build
+    // Replace problematic wagmi imports with stubs
+    // These sync functions don't exist in this viem version and aren't used in mini apps
     if (!isServer) {
       if (!config.plugins) {
         config.plugins = [];
       }
       config.plugins.push(
-        new webpack.IgnorePlugin({
-          resourceRegExp: /@wagmi\/core\/dist\/esm\/actions\/(sendCallsSync|sendTransactionSync)/,
-        })
+        new webpack.NormalModuleReplacementPlugin(
+          /@wagmi\/core\/dist\/esm\/actions\/sendCallsSync/,
+          path.resolve(__dirname, 'webpack-stubs/sendCallsSync.js')
+        ),
+        new webpack.NormalModuleReplacementPlugin(
+          /@wagmi\/core\/dist\/esm\/actions\/sendTransactionSync/,
+          path.resolve(__dirname, 'webpack-stubs/sendTransactionSync.js')
+        )
       );
     }
     
