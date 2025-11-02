@@ -54,14 +54,19 @@ export default function Home() {
     e.preventDefault();
     setError("");
 
-    // Check authentication first
-    if (isAuthLoading) {
+    // Check authentication - use context if available, otherwise try quickAuth
+    const hasContextAuth = context?.user?.fid;
+    const hasQuickAuth = authData?.success;
+    
+    // Show loading state
+    if (isAuthLoading && !hasContextAuth) {
       setError("Please wait while we verify your identity...");
       return;
     }
 
-    if (authError || !authData?.success) {
-      setError("Please authenticate to join the waitlist");
+    // If no authentication from either source, show error
+    if (!hasContextAuth && !hasQuickAuth && !isAuthLoading) {
+      setError("Please authenticate to join the waitlist. Make sure you're opening this app from within the Base app.");
       return;
     }
 
@@ -76,8 +81,11 @@ export default function Home() {
     }
 
     // TODO: Save email to database/API with user FID
+    const userFid = context?.user?.fid || authData?.user?.fid;
     console.log("Valid email submitted:", email);
-    console.log("User authenticated:", authData.user);
+    console.log("User authenticated:", userFid ? { fid: userFid } : "No auth");
+    console.log("Context user:", context?.user);
+    console.log("QuickAuth data:", authData);
     
     // Navigate to success page
     router.push("/success");
