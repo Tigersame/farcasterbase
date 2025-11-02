@@ -1,12 +1,9 @@
 import type { NextConfig } from "next";
-import webpack from "webpack";
 import path from "path";
 
 const nextConfig: NextConfig = {
-  // Use experimental config to handle the build issues
-  experimental: {
-    serverComponentsExternalPackages: ['@wagmi/core'],
-  },
+  // Mark wagmi core as external for server components
+  serverExternalPackages: ['@wagmi/core'],
   
   webpack: (config, { isServer, webpack }) => {
     config.externals.push("pino-pretty", "lokijs", "encoding");
