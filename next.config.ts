@@ -3,22 +3,45 @@ import webpack from "webpack";
 import path from "path";
 
 const nextConfig: NextConfig = {
-  webpack: (config, { isServer }) => {
+  // Use experimental config to handle the build issues
+  experimental: {
+    serverComponentsExternalPackages: ['@wagmi/core'],
+  },
+  
+  webpack: (config, { isServer, webpack }) => {
     config.externals.push("pino-pretty", "lokijs", "encoding");
     
-    // Replace problematic wagmi imports with stubs
-    // These sync functions don't exist in this viem version and aren't used in mini apps
+    // Only apply fixes for client-side builds
     if (!isServer) {
-      if (!config.plugins) {
-        config.plugins = [];
-      }
+      // Replace the problematic wagmi modules with stubs
+      config.plugins = config.plugins || [];
+      
+      // Use a more aggressive replacement that catches all variations
+      const replacements = [
+        {
+          test: /[\\/]node_modules[\\/]@wagmi[\\/]core[\\/]dist[\\/]esm[\\/]actions[\\/]sendCallsSync\.js$/,
+          resource: path.resolve(__dirname, 'webpack-stubs/sendCallsSync.js'),
+        },
+        {
+          test: /[\\/]node_modules[\\/]@wagmi[\\/]core[\\/]dist[\\/]esm[\\/]actions[\\/]sendTransactionSync\.js$/,
+          resource: path.resolve(__dirname, 'webpack-stubs/sendTransactionSync.js'),
+        },
+      ];
+      
+      replacements.forEach(({ test, resource }) => {
+        config.plugins.push(
+          new webpack.NormalModuleReplacementPlugin(test, resource)
+        );
+      });
+      
+      // Also handle package imports (not just node_modules paths)
       config.plugins.push(
         new webpack.NormalModuleReplacementPlugin(
-          /@wagmi\/core\/dist\/esm\/actions\/sendCallsSync/,
+          /^@wagmi\/core\/dist\/esm\/actions\/sendCallsSync$/,
           path.resolve(__dirname, 'webpack-stubs/sendCallsSync.js')
         ),
         new webpack.NormalModuleReplacementPlugin(
-          /@wagmi\/core\/dist\/esm\/actions\/sendTransactionSync/,
+          /^@wagmi\/core\/dist\/esm\/actions\/sendTransactionSync$/,
           path.resolve(__dirname, 'webpack-stubs/sendTransactionSync.js')
         )
       );
